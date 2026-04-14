@@ -1,20 +1,14 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+Finance-Tracker
 
-# Run and deploy your AI Studio app
+A personal finance tracker app to help users monitor expenses, set budgets, and track savings goals—all in one place.
 
-This contains everything you need to run your app locally.
+Run Locally
 
-View your app in AI Studio: https://ai.studio/apps/29ea66d3-d117-4e39-9806-768a1961c4cf
+Prerequisites: Node.js
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Install dependencies:
+npm install
+Set the GEMINI_API_KEY in .env.local
+ to your Gemini API key
+Run the app:
+npm run dev
