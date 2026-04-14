@@ -1,0 +1,5 @@
+{
+  "name": "FinDiary",
+  "description": "A personal finance tracker app designed to help users log expenses, track savings, monitor investments, and manage overall financial activity with tailored themes.",
+  "requestFramePermissions": []
+}
