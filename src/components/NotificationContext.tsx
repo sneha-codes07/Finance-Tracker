@@ -38,7 +38,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               initial={{ opacity: 0, y: -20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className={`p-4 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto bg-[var(--card-bg)] border border-[var(--border)]`}
+              className={`p-4 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto bg-[var(--surface)] border border-[var(--border)]`}
             >
               <div className={
                 n.type === 'success' ? 'text-green-500' : 

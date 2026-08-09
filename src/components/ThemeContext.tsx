@@ -7,7 +7,6 @@ interface ThemeContextType {
   theme: ThemeType;
   setTheme: (theme: ThemeType) => void;
   mode: ModeType;
-  setMode: (mode: ModeType) => void;
   toggleMode: () => void;
 }
 
@@ -16,29 +15,50 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<ThemeType>(() => {
     const saved = localStorage.getItem('findiary-theme');
-    return (saved as ThemeType) || 'Millennial';
+    // Map older string themes to system
+    if (saved === 'GenZ' || saved === 'Millennial' || saved === 'Teen' || saved === 'Classic') {
+      return 'system';
+    }
+    return (saved as ThemeType) || 'system';
   });
 
-  const [mode, setMode] = useState<ModeType>(() => {
-    const saved = localStorage.getItem('findiary-mode');
-    if (saved) return saved as ModeType;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const [mode, setMode] = useState<ModeType>('light');
 
   useEffect(() => {
     localStorage.setItem('findiary-theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
+
+    const updateMode = () => {
+      if (theme === 'light') {
+        setMode('light');
+        document.documentElement.setAttribute('data-mode', 'light');
+      } else if (theme === 'dark') {
+        setMode('dark');
+        document.documentElement.setAttribute('data-mode', 'dark');
+      } else {
+        const matchesDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setMode(matchesDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-mode', matchesDark ? 'dark' : 'light');
+      }
+    };
+
+    updateMode();
+
+    if (theme === 'system') {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => updateMode();
+      media.addEventListener('change', listener);
+      return () => media.removeEventListener('change', listener);
+    }
   }, [theme]);
 
-  useEffect(() => {
-    localStorage.setItem('findiary-mode', mode);
-    document.documentElement.setAttribute('data-mode', mode);
-  }, [mode]);
-
-  const toggleMode = () => setMode(prev => prev === 'light' ? 'dark' : 'light');
+  const toggleMode = () => {
+    // Toggles between light and dark themes
+    setTheme(mode === 'light' ? 'dark' : 'light');
+  };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, mode, setMode, toggleMode }}>
+    <ThemeContext.Provider value={{ theme, setTheme, mode, toggleMode }}>
       {children}
     </ThemeContext.Provider>
   );

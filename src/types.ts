@@ -1,12 +1,17 @@
-export type ThemeType = 'GenZ' | 'Millennial' | 'Teen' | 'Classic';
+export type ThemeType = 'light' | 'dark' | 'system';
 
 export interface Expense {
   id: string;
   amount: number;
   category: string;
-  description: string;
+  subcategory?: string;
+  description: string; // Keeps compatibility with V1
+  merchant?: string;
+  note?: string;
+  paymentMethod?: 'Cash' | 'Bank';
   date: string;
 }
+
 
 export interface SavingGoal {
   id: string;
@@ -44,6 +49,29 @@ export interface Reminder {
   isRecurring: boolean;
 }
 
+export interface RecurringExpense {
+  id: string;
+  merchant: string;
+  amount: number;
+  category: string;
+  frequency: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  lastDate?: string;
+  nextExpectedDate?: string;
+  note?: string;
+  isInferred: boolean;
+}
+
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: 'monthly' | 'quarterly' | 'yearly';
+  category: string;
+  nextBillingDate?: string;
+  isActive: boolean;
+  note?: string;
+}
+
 export interface UserData {
   cashBalance: number;
   bankBalance: number;
@@ -53,4 +81,7 @@ export interface UserData {
   investments: Investment[];
   borrowLend: BorrowLend[];
   reminders: Reminder[];
+  recurringExpenses?: RecurringExpense[];
+  subscriptions?: Subscription[];
+  notificationsEnabled?: boolean;
 }

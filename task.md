@@ -1,0 +1,24 @@
+# Tasks for Finance Tracker V2 Rebuild
+
+- `[x]` Core Services Foundation
+  - `[x]` Create `spendingService.ts` for authoritative spending calculations
+  - `[x]` Create `foodService.ts` for food subcategory mapping and classifications
+  - `[x]` Create `aiService.ts` for future AI interface declarations
+- `[x]` Data Model & Theme Refactoring
+  - `[x]` Refactor `types.ts` (simplify ThemeType, expand Expense)
+  - `[x]` Refactor `ThemeContext.tsx` to handle light/dark/system themes
+  - `[x]` Redesign `index.css` for a premium editorial design system
+- `[x]` Application Shell & Responsive Layout
+  - `[x]` Create `AppShell.tsx` for responsive navigation
+  - `[x]` Refactor `App.tsx` to integrate shell and orchestrate new screens
+- `[x]` Redesign of Core Screens
+  - `[x]` Implement `Overview.tsx` (Replacing `Dashboard.tsx`)
+  - `[x]` Implement `Transactions.tsx` (ledger list with filters, sorting, editing, deletion)
+  - `[x]` Implement `AddExpense.tsx` (large numeric entry modal, structured form, NL-ready schema)
+  - `[x]` Implement `Explore.tsx` directory dashboard
+  - `[x]` Implement `FoodIntelligence.tsx` placeholder structure
+  - `[x]` Refactor `Settings.tsx` (Light/Dark/System theme options, legacy links)
+- `[x]` Verification & Quality Control
+  - `[x]` Run typescript compile verification (`npm run lint`)
+  - `[x]` Run production bundle build (`npm run build`)
+  - `[x]` Perform manual review of interactions (adding, editing, deleting, persistence, theme changes)

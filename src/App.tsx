@@ -1,159 +1,189 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, TrendingUp, PiggyBank, Briefcase, Users, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider, useTheme } from './components/ThemeContext';
 import { NotificationProvider } from './components/NotificationContext';
 import { SplashScreen } from './components/SplashScreen';
-import { Dashboard } from './components/Dashboard';
-import { ExpenseTracker } from './components/ExpenseTracker';
+import { AppShell } from './components/AppShell';
+import { Overview } from './components/Overview';
+import { Transactions } from './components/Transactions';
+import { Explore } from './components/Explore';
 import { SavingsCorner } from './components/SavingsCorner';
+import { AIAssistant } from './components/AIAssistant';
+import { Settings } from './components/Settings';
+import { AddExpense } from './components/AddExpense';
+import { MoltenMetal } from './components/MoltenMetal';
+import { CustomCursor } from './components/CustomCursor';
+
+// Legacy components
 import { InvestmentDashboard } from './components/InvestmentDashboard';
 import { BorrowLend } from './components/BorrowLend';
-import { Settings } from './components/Settings';
-import { useFinData } from './hooks/useFinData';
-import { cn } from './lib/utils';
 
-type View = 'home' | 'expenses' | 'savings' | 'investments' | 'borrowLend' | 'settings';
+import { useFinData } from './hooks/useFinData';
+import { notificationService } from './lib/notificationService';
+
+type View = 'overview' | 'transactions' | 'explore' | 'goals' | 'ai' | 'settings' | 'investments' | 'borrowLend';
 
 function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
-  const [currentView, setCurrentView] = useState<View>('home');
-  const { theme } = useTheme();
+  const [currentView, setCurrentView] = useState<View>('overview');
+  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  
   const { 
     data, 
-    addExpense, 
+    addExpense,
+    updateExpense,
+    deleteExpense,
     addSavingContribution, 
     addInvestment, 
     addBorrowLend, 
     updateBalances, 
-    setSpendingLimit 
+    setSpendingLimit,
+    addRecurringExpense,
+    deleteRecurringExpense,
+    addSubscription,
+    deleteSubscription,
+    updateSubscription,
+    setNotificationsEnabled,
+    restoreBackup
   } = useFinData();
 
-  const renderView = () => {
-    if (showSplash) {
-      return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  // Periodically check and send notifications on state updates
+  useEffect(() => {
+    if (data && data.notificationsEnabled) {
+      notificationService.checkRules(data);
     }
+  }, [data]);
+
+  const renderView = () => {
     switch (currentView) {
-      case 'home':
+      case 'overview':
         return (
-          <Dashboard 
+          <Overview 
             data={data} 
-            onSectionClick={(s) => setCurrentView(s as View)} 
-            onUpdateBalances={updateBalances}
+            onViewChange={(v) => setCurrentView(v as View)} 
+            onAddExpenseClick={() => setIsAddExpenseOpen(true)}
           />
         );
-      case 'expenses':
-        return <ExpenseTracker expenses={data.expenses} onAddExpense={addExpense} />;
-      case 'savings':
-        return <SavingsCorner savings={data.savings} onAddContribution={addSavingContribution} />;
-      case 'investments':
-        return <InvestmentDashboard investments={data.investments} onAddInvestment={addInvestment} />;
-      case 'borrowLend':
-        return <BorrowLend items={data.borrowLend} onAddItem={addBorrowLend} />;
+      case 'transactions':
+        return (
+          <Transactions 
+            expenses={data.expenses} 
+            onUpdateExpense={updateExpense} 
+            onDeleteExpense={deleteExpense} 
+          />
+        );
+      case 'explore':
+        return (
+          <Explore 
+            data={data} 
+            onViewChange={(v) => setCurrentView(v as View)}
+            onAddRecurring={addRecurringExpense}
+            onDeleteRecurring={deleteRecurringExpense}
+            onAddSubscription={addSubscription}
+            onDeleteSubscription={deleteSubscription}
+            onUpdateSubscription={updateSubscription}
+          />
+        );
+      case 'goals':
+        return (
+          <SavingsCorner 
+            savings={data.savings} 
+            onAddContribution={addSavingContribution} 
+          />
+        );
+      case 'ai':
+        return (
+          <AIAssistant 
+            data={data} 
+            onAddExpense={addExpense}
+          />
+        );
       case 'settings':
         return (
           <Settings 
             spendingLimit={data.monthlySpendingLimit} 
             onSetLimit={setSpendingLimit}
+            onViewChange={(v) => setCurrentView(v as View)}
+            data={data}
+            onSetNotificationsEnabled={setNotificationsEnabled}
+            onRestoreBackup={restoreBackup}
           />
+        );
+      case 'investments':
+        return (
+          <div className="space-y-6">
+            <button 
+              onClick={() => setCurrentView('settings')}
+              className="text-xs font-semibold text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer focus:outline-none"
+            >
+              &larr; Back to Settings
+            </button>
+            <InvestmentDashboard 
+              investments={data.investments} 
+              onAddInvestment={addInvestment} 
+            />
+          </div>
+        );
+      case 'borrowLend':
+        return (
+          <div className="space-y-6">
+            <button 
+              onClick={() => setCurrentView('settings')}
+              className="text-xs font-semibold text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer focus:outline-none"
+            >
+              &larr; Back to Settings
+            </button>
+            <BorrowLend 
+              items={data.borrowLend} 
+              onAddItem={addBorrowLend} 
+            />
+          </div>
         );
       default:
         return (
-          <Dashboard 
+          <Overview 
             data={data} 
-            onSectionClick={(s) => setCurrentView(s as View)} 
-            onUpdateBalances={updateBalances}
+            onViewChange={(v) => setCurrentView(v as View)} 
+            onAddExpenseClick={() => setIsAddExpenseOpen(true)}
           />
         );
     }
   };
 
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
+
   return (
-    <div className={cn(
-      "min-h-screen bg-[var(--bg)] text-[var(--text)] selection:bg-[var(--accent)] selection:text-white transition-colors duration-500",
-      theme === 'GenZ' && "glitter-bg"
-    )}>
-      <main className="max-w-md mx-auto px-6 pt-8 pb-32">
+    <>
+      <MoltenMetal speed={0.25} opacity={0.35} />
+      <CustomCursor />
+      <AppShell 
+        currentView={currentView} 
+        onViewChange={(v) => setCurrentView(v as View)}
+        onAddExpenseClick={() => setIsAddExpenseOpen(true)}
+      >
         <AnimatePresence mode="wait">
           <motion.div
-            key={showSplash ? 'splash' : currentView}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            key={currentView}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="w-full relative z-10"
           >
             {renderView()}
           </motion.div>
         </AnimatePresence>
-      </main>
+      </AppShell>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[var(--card-bg)]/80 backdrop-blur-xl border-t border-[var(--border)] z-50">
-        <div className="max-w-md mx-auto px-6 py-3 flex justify-between items-center">
-          <NavButton 
-            active={currentView === 'home'} 
-            onClick={() => setCurrentView('home')} 
-            icon={<Home size={22} />} 
-            label="Home" 
-          />
-          <NavButton 
-            active={currentView === 'expenses'} 
-            onClick={() => setCurrentView('expenses')} 
-            icon={<TrendingUp size={22} />} 
-            label="Expenses" 
-          />
-          <NavButton 
-            active={currentView === 'savings'} 
-            onClick={() => setCurrentView('savings')} 
-            icon={<PiggyBank size={22} />} 
-            label="Savings" 
-          />
-          <NavButton 
-            active={currentView === 'investments'} 
-            onClick={() => setCurrentView('investments')} 
-            icon={<Briefcase size={22} />} 
-            label="Invest" 
-          />
-          <NavButton 
-            active={currentView === 'borrowLend'} 
-            onClick={() => setCurrentView('borrowLend')} 
-            icon={<Users size={22} />} 
-            label="Social" 
-          />
-          <NavButton 
-            active={currentView === 'settings'} 
-            onClick={() => setCurrentView('settings')} 
-            icon={<SettingsIcon size={22} />} 
-            label="Settings" 
-          />
-        </div>
-      </nav>
-    </div>
-  );
-}
-
-function NavButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-center gap-1 transition-all duration-300",
-        active ? "text-[var(--accent)] scale-110" : "text-[var(--text)] opacity-40 hover:opacity-100"
-      )}
-    >
-      <div className={cn(
-        "p-1 rounded-xl transition-all",
-        active && "bg-[var(--accent)]/10"
-      )}>
-        {icon}
-      </div>
-      <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
-    </button>
+      {/* Quick Add Expense Modal */}
+      <AddExpense 
+        isOpen={isAddExpenseOpen} 
+        onClose={() => setIsAddExpenseOpen(false)} 
+        onAddExpense={addExpense} 
+      />
+    </>
   );
 }
 
