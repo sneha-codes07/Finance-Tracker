@@ -10,7 +10,8 @@
   - `[x]` Redesign `index.css` for a premium editorial design system
 - `[x]` Application Shell & Responsive Layout
   - `[x]` Create `AppShell.tsx` for responsive navigation
-  - `[x]` Refactor `App.tsx` to integrate shell and orchestrate new screens
+  - `[x]` Refactor `App.tsx` to handle authentication routing and Google Sign-Out
+- `[x]` Ensure AI data access is isolated specifically to the Google User's state
 - `[x]` Redesign of Core Screens
   - `[x]` Implement `Overview.tsx` (Replacing `Dashboard.tsx`)
   - `[x]` Implement `Transactions.tsx` (ledger list with filters, sorting, editing, deletion)

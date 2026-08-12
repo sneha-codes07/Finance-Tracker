@@ -7,8 +7,7 @@ import { useNotification } from './NotificationContext';
 interface SavingsCornerProps {
   savings: SavingGoal[];
   onAddContribution: (goalId: string, amount: number) => void;
-  // If V1 had addGoal, we can expose it, or just support contribution logging
-  onAddGoal?: (title: string, targetAmount: number) => void;
+  onAddGoal: (title: string, targetAmount: number, initialAmount: number) => void;
 }
 
 export function SavingsCorner({ savings, onAddContribution, onAddGoal }: SavingsCornerProps) {
@@ -20,6 +19,7 @@ export function SavingsCorner({ savings, onAddContribution, onAddGoal }: Savings
   const [isAddingGoal, setIsAddingGoal] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState('');
+  const [newGoalCurrent, setNewGoalCurrent] = useState('0');
 
   const handleContribute = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,24 +39,34 @@ export function SavingsCorner({ savings, onAddContribution, onAddGoal }: Savings
 
   const handleCreateGoal = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newGoalTitle || !newGoalTarget) return;
-
-    const parsedTarget = parseFloat(newGoalTarget);
-    if (isNaN(parsedTarget) || parsedTarget <= 0) {
-      showNotification('Please enter a valid target amount', 'warning');
+    if (!newGoalTitle || !newGoalTarget) {
+      showNotification('Goal title and target amount are required', 'warning');
       return;
     }
 
-    if (onAddGoal) {
-      onAddGoal(newGoalTitle, parsedTarget);
-    } else {
-      // Direct local state addition if handler isn't passed (handled in hook)
-      // Since useFinData doesn't have addGoal, we can add it to the state in App.tsx or useFinData.ts later
-      showNotification('Goal creation supported in data hook', 'info');
+    const parsedTarget = parseFloat(newGoalTarget);
+    if (isNaN(parsedTarget) || parsedTarget <= 0) {
+      showNotification('Please enter a valid target amount greater than 0', 'warning');
+      return;
     }
+
+    const parsedCurrent = parseFloat(newGoalCurrent || '0');
+    if (isNaN(parsedCurrent) || parsedCurrent < 0) {
+      showNotification('Please enter a valid current/saved amount', 'warning');
+      return;
+    }
+
+    if (parsedCurrent > parsedTarget) {
+      showNotification('Current amount cannot be greater than target amount', 'warning');
+      return;
+    }
+
+    onAddGoal(newGoalTitle, parsedTarget, parsedCurrent);
+    showNotification('Goal created successfully', 'success');
 
     setNewGoalTitle('');
     setNewGoalTarget('');
+    setNewGoalCurrent('0');
     setIsAddingGoal(false);
   };
 
@@ -69,6 +79,15 @@ export function SavingsCorner({ savings, onAddContribution, onAddGoal }: Savings
           <h2 className="text-3xl font-bold text-[var(--foreground)] editorial-title">Goals</h2>
           <p className="text-sm text-[var(--muted)] mt-1 font-medium">Progress towards your financial targets.</p>
         </div>
+        <button
+          onClick={() => {
+            setNewGoalCurrent('0');
+            setIsAddingGoal(true);
+          }}
+          className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-[var(--accent)] text-[#080808] text-xs font-bold uppercase tracking-wider cursor-pointer hover:opacity-90 transition-all focus:outline-none shadow-sm"
+        >
+          <Plus size={14} /> Add Goal
+        </button>
       </div>
 
       {/* Goal Cards Grid */}
@@ -190,6 +209,75 @@ export function SavingsCorner({ savings, onAddContribution, onAddGoal }: Savings
                   className="w-full py-3.5 px-4 rounded-xl bg-[var(--accent)] text-[#080808] font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-md text-center focus:outline-none"
                 >
                   Confirm Contribution
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Goal Drawer / Modal */}
+      {isAddingGoal && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          onClick={() => setIsAddingGoal(false)}
+        >
+          <div 
+            className="w-full max-w-sm glass-panel rounded-2xl p-6 space-y-5 shadow-[0_15px_50px_rgba(0,0,0,0.4)] animate-slide-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center select-none border-b border-[var(--border)]/30 pb-3">
+              <h3 className="text-lg font-bold text-[var(--foreground)] font-serif">Create New Goal</h3>
+              <button onClick={() => setIsAddingGoal(false)} className="text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateGoal} className="space-y-4">
+              <div className="space-y-1.5 p-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border)]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] ml-1 select-none">Goal Name</label>
+                <input 
+                  type="text" 
+                  required
+                  value={newGoalTitle}
+                  onChange={e => setNewGoalTitle(e.target.value)}
+                  className="w-full bg-transparent border-none text-base font-bold focus:outline-none focus:ring-0 text-[var(--foreground)] p-1"
+                  placeholder="e.g. Dream House"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1.5 p-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border)]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] ml-1 select-none">Target Amount (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  required
+                  value={newGoalTarget}
+                  onChange={e => setNewGoalTarget(e.target.value)}
+                  className="w-full bg-transparent border-none text-base font-bold font-mono focus:outline-none focus:ring-0 text-[var(--foreground)] p-1"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="space-y-1.5 p-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border)]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] ml-1 select-none">Current/Saved Amount (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={newGoalCurrent}
+                  onChange={e => setNewGoalCurrent(e.target.value)}
+                  className="w-full bg-transparent border-none text-base font-bold font-mono focus:outline-none focus:ring-0 text-[var(--foreground)] p-1"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  type="submit"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[var(--accent)] text-[#080808] font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-md text-center focus:outline-none"
+                >
+                  Create Goal
                 </button>
               </div>
             </form>

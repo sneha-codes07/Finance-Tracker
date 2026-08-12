@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowUpRight, ArrowDownRight, ArrowRight, ChevronRight, Utensils, ShoppingBag, Landmark, Landmark as TransportIcon, HelpCircle, AlertCircle, Sparkles, Plus, Wallet } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, ArrowRight, ChevronRight, Utensils, ShoppingBag, Landmark, Landmark as TransportIcon, HelpCircle, AlertCircle, Sparkles, Plus, Wallet, X } from 'lucide-react';
 import { UserData, Expense } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { 
@@ -10,15 +10,41 @@ import {
   getExpensesForMonth
 } from '../lib/spendingService';
 import { classifyFoodExpense, FOOD_GROUPS } from '../lib/foodService';
+import { useNotification } from './NotificationContext';
 
 interface OverviewProps {
   data: UserData;
   onViewChange: (view: string) => void;
   onAddExpenseClick: () => void;
+  onUpdateBalances: (cash: number, bank: number) => void;
 }
 
-export function Overview({ data, onViewChange, onAddExpenseClick }: OverviewProps) {
+export function Overview({ data, onViewChange, onAddExpenseClick, onUpdateBalances }: OverviewProps) {
+  const { showNotification } = useNotification();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  
+  const [isEditingBalances, setIsEditingBalances] = useState(false);
+  const [editCash, setEditCash] = useState(data.cashBalance.toString());
+  const [editBank, setEditBank] = useState(data.bankBalance.toString());
+
+  const handleOpenBalancesEdit = () => {
+    setEditCash(data.cashBalance.toString());
+    setEditBank(data.bankBalance.toString());
+    setIsEditingBalances(true);
+  };
+
+  const handleBalancesSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedCash = parseFloat(editCash);
+    const parsedBank = parseFloat(editBank);
+    if (isNaN(parsedCash) || parsedCash < 0 || isNaN(parsedBank) || parsedBank < 0) {
+      showNotification('Please enter valid non-negative balance amounts', 'warning');
+      return;
+    }
+    onUpdateBalances(parsedCash, parsedBank);
+    setIsEditingBalances(false);
+    showNotification('Balances updated successfully', 'success');
+  };
   
   const today = new Date();
   const currentMonthName = today.toLocaleString('en-IN', { month: 'long' }).toUpperCase();
@@ -27,7 +53,16 @@ export function Overview({ data, onViewChange, onAddExpenseClick }: OverviewProp
   // Get spending metrics from service
   const summary = getSpendingSummary(data.expenses, today);
   const changes = getMeaningfulChanges(data.expenses, today);
-  const observations = getSpendingObservations(data.expenses, today, data.monthlySpendingLimit);
+  const rawObservations = getSpendingObservations(data.expenses, today, data.monthlySpendingLimit);
+  const observations = [...rawObservations];
+  if (data.cashBalance === 0 && data.bankBalance === 0 && data.expenses.length === 0) {
+    observations.unshift({
+      id: 'setup-balances',
+      type: 'info',
+      title: 'Set starting balances',
+      message: 'Click either Cash or Bank balance card above to enter your current funds and start tracking.'
+    });
+  }
 
   // Group current month's expenses
   const currentMonthExpenses = getExpensesForMonth(data.expenses, today.getMonth(), today.getFullYear());
@@ -166,8 +201,12 @@ export function Overview({ data, onViewChange, onAddExpenseClick }: OverviewProp
 
         {/* Quick Balance Readouts */}
         <div className="grid grid-cols-2 gap-4 max-w-sm pt-3">
-          <div className="flex items-center gap-3 py-2 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border)]/45 backdrop-blur-md">
-            <div className="w-8 h-8 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center shrink-0">
+          <div 
+            onClick={handleOpenBalancesEdit}
+            className="flex items-center gap-3 py-2 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border)]/45 backdrop-blur-md cursor-pointer hover:border-[var(--accent)]/45 transition-all select-none group"
+            title="Click to edit starting balances"
+          >
+            <div className="w-8 h-8 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-[var(--accent)]/10">
               <Wallet size={15} />
             </div>
             <div>
@@ -175,8 +214,12 @@ export function Overview({ data, onViewChange, onAddExpenseClick }: OverviewProp
               <p className="text-xs font-bold tabular-digits">{formatCurrency(data.cashBalance)}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 py-2 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border)]/45 backdrop-blur-md">
-            <div className="w-8 h-8 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center shrink-0">
+          <div 
+            onClick={handleOpenBalancesEdit}
+            className="flex items-center gap-3 py-2 px-3 rounded-xl bg-[var(--surface)] border border-[var(--border)]/45 backdrop-blur-md cursor-pointer hover:border-[var(--accent)]/45 transition-all select-none group"
+            title="Click to edit starting balances"
+          >
+            <div className="w-8 h-8 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-[var(--accent)]/10">
               <Landmark size={15} />
             </div>
             <div>
@@ -368,6 +411,64 @@ export function Overview({ data, onViewChange, onAddExpenseClick }: OverviewProp
             })}
           </div>
         </section>
+      )}
+
+      {/* Update Balances Modal */}
+      {isEditingBalances && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          onClick={() => setIsEditingBalances(false)}
+        >
+          <div 
+            className="w-full max-w-sm glass-panel rounded-2xl p-6 space-y-5 shadow-[0_15px_50px_rgba(0,0,0,0.4)] animate-slide-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center select-none border-b border-[var(--border)]/30 pb-3">
+              <h3 className="text-lg font-bold text-[var(--foreground)] font-serif">Update Balances</h3>
+              <button onClick={() => setIsEditingBalances(false)} className="text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer focus:outline-none">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleBalancesSubmit} className="space-y-4">
+              <div className="space-y-1.5 p-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border)]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] ml-1 select-none">Cash Balance (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  required
+                  value={editCash}
+                  onChange={e => setEditCash(e.target.value)}
+                  className="w-full bg-transparent border-none text-base font-bold font-mono focus:outline-none focus:ring-0 text-[var(--foreground)] p-1"
+                  placeholder="0.00"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1.5 p-3 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border)]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] ml-1 select-none">Bank Balance (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  required
+                  value={editBank}
+                  onChange={e => setEditBank(e.target.value)}
+                  className="w-full bg-transparent border-none text-base font-bold font-mono focus:outline-none focus:ring-0 text-[var(--foreground)] p-1"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  type="submit"
+                  className="w-full py-3.5 px-4 rounded-xl bg-[var(--accent)] text-[#080808] font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-md text-center focus:outline-none font-sans"
+                >
+                  Save Balances
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
     </div>

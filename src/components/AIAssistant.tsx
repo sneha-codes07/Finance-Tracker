@@ -98,7 +98,7 @@ export function AIAssistant({ data, onAddExpense }: AIAssistantProps) {
       const errorMsg: Message = {
         id: Math.random().toString(36).substr(2, 9),
         sender: 'assistant',
-        text: "I experienced a difficulty retrieving details. Please configure your Gemini API Key in Settings or check your connection.",
+        text: "I experienced a difficulty retrieving details. Please configure your GROQ_API_KEY on the server or check your connection.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMsg]);

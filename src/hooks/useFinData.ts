@@ -1,20 +1,13 @@
 import { useState, useEffect } from 'react';
-import { UserData, Expense, Investment, BorrowLend, RecurringExpense, Subscription } from '../types';
+import { UserData, Expense, Investment, BorrowLend, RecurringExpense, Subscription, SavingGoal } from '../types';
+import { supabase } from '../lib/supabase';
 
 const INITIAL_DATA: UserData = {
-  cashBalance: 5000,
-  bankBalance: 45000,
-  monthlySpendingLimit: 20000,
+  cashBalance: 0,
+  bankBalance: 0,
+  monthlySpendingLimit: 0,
   expenses: [],
-  savings: [
-    {
-      id: '1',
-      title: 'New Car',
-      targetAmount: 800000,
-      currentAmount: 150000,
-      contributions: [{ amount: 150000, date: new Date().toISOString() }]
-    }
-  ],
+  savings: [],
   investments: [],
   borrowLend: [],
   reminders: [],
@@ -23,26 +16,71 @@ const INITIAL_DATA: UserData = {
   notificationsEnabled: false
 };
 
-export function useFinData() {
-  const [data, setData] = useState<UserData>(() => {
-    const saved = localStorage.getItem('findiary-data');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (!parsed.recurringExpenses) parsed.recurringExpenses = [];
-        if (!parsed.subscriptions) parsed.subscriptions = [];
-        if (parsed.notificationsEnabled === undefined) parsed.notificationsEnabled = false;
-        return parsed;
-      } catch (e) {
-        return INITIAL_DATA;
-      }
-    }
-    return INITIAL_DATA;
-  });
+export function useFinData(userId: string | null) {
+  const [data, setData] = useState<UserData>(INITIAL_DATA);
+  const [loading, setLoading] = useState(true);
 
+  // Load data from Supabase
   useEffect(() => {
-    localStorage.setItem('findiary-data', JSON.stringify(data));
-  }, [data]);
+    if (!supabase || !userId) {
+      setData(INITIAL_DATA);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    supabase.from('user_data')
+      .select('data')
+      .eq('id', userId)
+      .single()
+      .then(async ({ data: row, error }) => {
+        if (error) {
+          if (error.code === 'PGRST116') {
+            // Document doesn't exist, create it with INITIAL_DATA
+            await supabase.from('user_data').insert({ id: userId, data: INITIAL_DATA });
+            setData(INITIAL_DATA);
+          } else {
+            console.error("Error fetching user data from Supabase:", error);
+            setData(INITIAL_DATA);
+          }
+        } else if (row && row.data) {
+          const fetchedData = row.data as UserData;
+          // Ensure arrays exist
+          if (!fetchedData.expenses) fetchedData.expenses = [];
+          if (!fetchedData.savings) fetchedData.savings = [];
+          if (!fetchedData.investments) fetchedData.investments = [];
+          if (!fetchedData.borrowLend) fetchedData.borrowLend = [];
+          if (!fetchedData.reminders) fetchedData.reminders = [];
+          if (!fetchedData.recurringExpenses) fetchedData.recurringExpenses = [];
+          if (!fetchedData.subscriptions) fetchedData.subscriptions = [];
+          setData(fetchedData);
+        } else {
+          setData(INITIAL_DATA);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Exception loading user data from Supabase:", err);
+        setData(INITIAL_DATA);
+        setLoading(false);
+      });
+  }, [userId]);
+
+  // Sync updates to Supabase
+  useEffect(() => {
+    if (!supabase || !userId || loading) return;
+
+    supabase.from('user_data')
+      .upsert({ id: userId, data: data })
+      .then(({ error }) => {
+        if (error) {
+          console.error("Error writing user data to Supabase:", error);
+        }
+      })
+      .catch((err) => {
+        console.error("Exception writing user data to Supabase:", err);
+      });
+  }, [data, userId, loading]);
 
   const addExpense = (expense: Omit<Expense, 'id'>) => {
     const newExpense = { ...expense, id: Math.random().toString(36).substr(2, 9) };
@@ -88,6 +126,20 @@ export function useFinData() {
         cashBalance: wasCash ? prev.cashBalance + old.amount : prev.cashBalance
       };
     });
+  };
+
+  const addSavingGoal = (title: string, targetAmount: number, initialAmount: number) => {
+    const newGoal: SavingGoal = {
+      id: Math.random().toString(36).substr(2, 9),
+      title,
+      targetAmount,
+      currentAmount: initialAmount,
+      contributions: initialAmount > 0 ? [{ amount: initialAmount, date: new Date().toISOString() }] : []
+    };
+    setData(prev => ({
+      ...prev,
+      savings: [...prev.savings, newGoal]
+    }));
   };
 
   const addSavingContribution = (goalId: string, amount: number) => {
@@ -181,9 +233,11 @@ export function useFinData() {
 
   return {
     data,
+    loading,
     addExpense,
     updateExpense,
     deleteExpense,
+    addSavingGoal,
     addSavingContribution,
     addInvestment,
     addBorrowLend,

@@ -7,9 +7,18 @@ interface AppShellProps {
   onViewChange: (view: string) => void;
   children: React.ReactNode;
   onAddExpenseClick: () => void;
+  activeProfileName: string;
+  onProfileClick: () => void;
 }
 
-export function AppShell({ currentView, onViewChange, children, onAddExpenseClick }: AppShellProps) {
+export function AppShell({ 
+  currentView, 
+  onViewChange, 
+  children, 
+  onAddExpenseClick,
+  activeProfileName,
+  onProfileClick
+}: AppShellProps) {
   const navItems = [
     { id: 'overview', label: 'Overview', icon: <Home size={18} /> },
     { id: 'transactions', label: 'Transactions', icon: <History size={18} /> },
@@ -57,7 +66,21 @@ export function AppShell({ currentView, onViewChange, children, onAddExpenseClic
           })}
         </nav>
 
-        <div className="pt-4 border-t border-[var(--border)]">
+        <div className="pt-4 border-t border-[var(--border)]/30 space-y-3">
+          {/* Active Profile Info and Switching */}
+          <div 
+            onClick={onProfileClick}
+            className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--surface-elevated)]/30 border border-transparent hover:border-[var(--border)]/30 cursor-pointer select-none transition-all group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] border border-[var(--accent)]/15 flex items-center justify-center font-bold text-xs font-mono uppercase shrink-0">
+              {activeProfileName ? activeProfileName.substring(0, 2) : 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-[var(--foreground)] truncate leading-none">{activeProfileName}</p>
+              <p className="text-[9px] text-[var(--muted)] font-semibold mt-1.5 leading-none uppercase tracking-wider">Switch Profile</p>
+            </div>
+          </div>
+
           <button
             onClick={onAddExpenseClick}
             className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[var(--accent)] text-[#080808] font-bold text-xs hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-[0_4px_15px_rgba(214,168,95,0.15)] focus:outline-none"
@@ -77,6 +100,13 @@ export function AppShell({ currentView, onViewChange, children, onAddExpenseClic
           <span className="font-bold text-base leading-none editorial-title">Finance V2</span>
         </div>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={onProfileClick}
+            className="w-8 h-8 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] border border-[var(--accent)]/15 flex items-center justify-center font-bold text-xs font-mono uppercase cursor-pointer shrink-0"
+            aria-label="Profile Management"
+          >
+            {activeProfileName ? activeProfileName.substring(0, 2) : 'U'}
+          </button>
           <button 
             onClick={() => onViewChange('ai')}
             className={cn(

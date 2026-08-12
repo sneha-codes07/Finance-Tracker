@@ -1,5 +1,10 @@
 export type ThemeType = 'light' | 'dark' | 'system';
 
+export interface Profile {
+  id: string;
+  name: string;
+}
+
 export interface Expense {
   id: string;
   amount: number;
