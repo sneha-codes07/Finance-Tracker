@@ -33,7 +33,15 @@ function AppContent({
   user,
   onLogout
 }: { 
-  user: User;
+  user: {
+    id: string;
+    email?: string;
+    user_metadata?: {
+      full_name?: string;
+      avatar_url?: string;
+    };
+    isGuest?: boolean;
+  };
   onLogout: () => void | Promise<void>;
   key?: string;
 }) {
@@ -61,7 +69,7 @@ function AppContent({
     updateSubscription,
     setNotificationsEnabled,
     restoreBackup
-  } = useFinData(user.uid);
+  } = useFinData(user.id);
 
   // Periodically check and send notifications on state updates
   useEffect(() => {
@@ -236,16 +244,20 @@ function AppContent({
             {/* Profile Info */}
             <div className="flex items-center gap-4 p-4 rounded-2xl bg-[var(--surface-elevated)]/40 border border-[var(--border)]/50 select-none">
               <div className="w-12 h-12 rounded-xl bg-[var(--accent)] text-[#080808] flex items-center justify-center font-bold text-lg font-mono uppercase">
-                {(user.user_metadata?.full_name || user.email || 'U').substring(0, 2)}
+                {user.isGuest ? 'GU' : (user.user_metadata?.full_name || user.email || 'U').substring(0, 2)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-[var(--foreground)] truncate leading-none">{user.user_metadata?.full_name || 'Google User'}</p>
-                <p className="text-[10px] text-[var(--muted)] font-semibold mt-1.5 truncate leading-none">{user.email}</p>
+                <p className="font-bold text-sm text-[var(--foreground)] truncate leading-none">{user.isGuest ? 'Guest User' : (user.user_metadata?.full_name || 'Google User')}</p>
+                <p className="text-[10px] text-[var(--muted)] font-semibold mt-1.5 truncate leading-none">{user.isGuest ? 'Local Sandbox Session' : user.email}</p>
               </div>
             </div>
 
             <div className="text-xs text-[var(--muted)] font-medium leading-relaxed select-none">
-              <p>Your financial data is securely isolated in Supabase PostgreSQL database and mapped to this authenticated Google account.</p>
+              <p>
+                {user.isGuest 
+                  ? 'Your financial data is stored locally in this browser\'s localStorage. It is isolated from Supabase and will not sync across devices.'
+                  : 'Your financial data is securely isolated in Supabase PostgreSQL database and mapped to this authenticated Google account.'}
+              </p>
             </div>
 
             {/* Logout Action */}
@@ -257,7 +269,7 @@ function AppContent({
                 }}
                 className="w-full py-3 px-4 rounded-xl bg-[var(--danger-light)] hover:bg-[var(--danger-light)]/85 text-[var(--danger)] font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer border border-[var(--danger)]/20 focus:outline-none"
               >
-                Sign Out Google Account
+                {user.isGuest ? 'Exit Guest Mode' : 'Sign Out Google Account'}
               </button>
             </div>
           </div>
@@ -267,7 +279,7 @@ function AppContent({
   );
 }
 
-function LoginScreen() {
+function LoginScreen({ onContinueAsGuest }: { onContinueAsGuest: () => void }) {
   const [loggingIn, setLoggingIn] = useState(false);
   const { showNotification } = useNotification();
 
@@ -307,22 +319,32 @@ function LoginScreen() {
             Please sign in to access your isolated personal spending reports, savings goals, and AI financial assistant.
           </p>
 
-          <button 
-            onClick={handleGoogleSignIn}
-            disabled={loggingIn}
-            className="w-full py-4 px-6 rounded-2xl bg-[var(--accent)] text-[#080808] font-bold text-xs hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-lg text-center flex items-center justify-center gap-3 focus:outline-none disabled:opacity-50 font-sans tracking-wide uppercase"
-          >
-            {loggingIn ? (
-              <span>Signing in...</span>
-            ) : (
-              <>
-                <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                  <path d="M12.24 10.285V13.4h6.887C18.2 15.614 15.645 18 12.24 18c-3.86 0-7-3.14-7-7s3.14-7 7-7c1.7 0 3.3.6 4.5 1.7l2.4-2.4C17.3 1.7 14.9 1 12.24 1c-5.5 0-10 4.5-10 10s4.5 10 10 10c5.8 0 9.7-4.1 9.7-9.9 0-.6-.1-1.2-.2-1.7H12.24z"/>
-                </svg>
-                Continue with Google
-              </>
-            )}
-          </button>
+          <div className="space-y-3">
+            <button 
+              onClick={handleGoogleSignIn}
+              disabled={loggingIn}
+              className="w-full py-4 px-6 rounded-2xl bg-[var(--accent)] text-[#080808] font-bold text-xs hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-lg text-center flex items-center justify-center gap-3 focus:outline-none disabled:opacity-50 font-sans tracking-wide uppercase"
+            >
+              {loggingIn ? (
+                <span>Signing in...</span>
+              ) : (
+                <>
+                  <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                    <path d="M12.24 10.285V13.4h6.887C18.2 15.614 15.645 18 12.24 18c-3.86 0-7-3.14-7-7s3.14-7 7-7c1.7 0 3.3.6 4.5 1.7l2.4-2.4C17.3 1.7 14.9 1 12.24 1c-5.5 0-10 4.5-10 10s4.5 10 10 10c5.8 0 9.7-4.1 9.7-9.9 0-.6-.1-1.2-.2-1.7H12.24z"/>
+                  </svg>
+                  Continue with Google
+                </>
+              )}
+            </button>
+
+            <button 
+              onClick={onContinueAsGuest}
+              disabled={loggingIn}
+              className="w-full py-4 px-6 rounded-2xl bg-[var(--surface-elevated)] hover:bg-[var(--surface-elevated)]/80 text-[var(--foreground)] font-bold text-xs active:scale-[0.98] transition-all cursor-pointer border border-[var(--border)] text-center flex items-center justify-center gap-3 focus:outline-none disabled:opacity-50 font-sans tracking-wide uppercase"
+            >
+              Continue as Guest
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -364,9 +386,21 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key`}
   );
 }
 
+const GUEST_USER = {
+  id: 'guest',
+  email: 'guest@findiary.local',
+  user_metadata: {
+    full_name: 'Guest User'
+  },
+  isGuest: true
+};
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState<boolean>(() => {
+    return localStorage.getItem('findiary_is_guest') === 'true';
+  });
 
   useEffect(() => {
     if (!supabase) {
@@ -391,9 +425,17 @@ export default function App() {
   }, []);
 
   const handleLogout = async () => {
-    if (supabase) {
+    if (isGuest) {
+      localStorage.removeItem('findiary_is_guest');
+      setIsGuest(false);
+    } else if (supabase) {
       await supabase.auth.signOut();
     }
+  };
+
+  const handleContinueAsGuest = () => {
+    localStorage.setItem('findiary_is_guest', 'true');
+    setIsGuest(true);
   };
 
   return (
@@ -408,12 +450,12 @@ export default function App() {
               <p className="text-xs text-[var(--muted)] font-mono uppercase tracking-wider">Loading FinDiary...</p>
             </div>
           </div>
-        ) : !user ? (
-          <LoginScreen />
+        ) : (!user && !isGuest) ? (
+          <LoginScreen onContinueAsGuest={handleContinueAsGuest} />
         ) : (
           <AppContent 
-            key={user.id} 
-            user={user} 
+            key={isGuest ? 'guest' : user!.id} 
+            user={isGuest ? GUEST_USER : user!} 
             onLogout={handleLogout} 
           />
         )}

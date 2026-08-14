@@ -20,20 +20,49 @@ export function useFinData(userId: string | null) {
   const [data, setData] = useState<UserData>(INITIAL_DATA);
   const [loading, setLoading] = useState(true);
 
-  // Load data from Supabase
+  // Load data from Supabase or localStorage (Guest)
   useEffect(() => {
-    if (!supabase || !userId) {
-      setData(INITIAL_DATA);
-      setLoading(false);
-      return;
-    }
+    async function loadData() {
+      if (userId === 'guest') {
+        setLoading(true);
+        try {
+          const saved = localStorage.getItem('findiary_guest_data');
+          if (saved) {
+            const fetchedData = JSON.parse(saved) as UserData;
+            // Ensure arrays exist
+            if (!fetchedData.expenses) fetchedData.expenses = [];
+            if (!fetchedData.savings) fetchedData.savings = [];
+            if (!fetchedData.investments) fetchedData.investments = [];
+            if (!fetchedData.borrowLend) fetchedData.borrowLend = [];
+            if (!fetchedData.reminders) fetchedData.reminders = [];
+            if (!fetchedData.recurringExpenses) fetchedData.recurringExpenses = [];
+            if (!fetchedData.subscriptions) fetchedData.subscriptions = [];
+            setData(fetchedData);
+          } else {
+            setData(INITIAL_DATA);
+          }
+        } catch (err) {
+          console.error("Exception loading guest data from localStorage:", err);
+          setData(INITIAL_DATA);
+        }
+        setLoading(false);
+        return;
+      }
 
-    setLoading(true);
-    supabase.from('user_data')
-      .select('data')
-      .eq('id', userId)
-      .single()
-      .then(async ({ data: row, error }) => {
+      if (!supabase || !userId) {
+        setData(INITIAL_DATA);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const { data: row, error } = await supabase
+          .from('user_data')
+          .select('data')
+          .eq('id', userId)
+          .single();
+
         if (error) {
           if (error.code === 'PGRST116') {
             // Document doesn't exist, create it with INITIAL_DATA
@@ -57,29 +86,46 @@ export function useFinData(userId: string | null) {
         } else {
           setData(INITIAL_DATA);
         }
-        setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Exception loading user data from Supabase:", err);
         setData(INITIAL_DATA);
+      } finally {
         setLoading(false);
-      });
+      }
+    }
+
+    loadData();
   }, [userId]);
 
-  // Sync updates to Supabase
+  // Sync updates to Supabase or localStorage (Guest)
   useEffect(() => {
-    if (!supabase || !userId || loading) return;
+    async function syncData() {
+      if (userId === 'guest') {
+        if (loading) return;
+        try {
+          localStorage.setItem('findiary_guest_data', JSON.stringify(data));
+        } catch (err) {
+          console.error("Exception writing guest data to localStorage:", err);
+        }
+        return;
+      }
 
-    supabase.from('user_data')
-      .upsert({ id: userId, data: data })
-      .then(({ error }) => {
+      if (!supabase || !userId || loading) return;
+
+      try {
+        const { error } = await supabase
+          .from('user_data')
+          .upsert({ id: userId, data: data });
+
         if (error) {
           console.error("Error writing user data to Supabase:", error);
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Exception writing user data to Supabase:", err);
-      });
+      }
+    }
+
+    syncData();
   }, [data, userId, loading]);
 
   const addExpense = (expense: Omit<Expense, 'id'>) => {
